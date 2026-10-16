@@ -1,0 +1,108 @@
+Add apt-cyg2 2.0: new commands, safer installs, bug fixes, test suite
+
+apt-cyg2 is a rewrite of apt-cyg with new operations and options and with
+the defects of version 1 fixed. apt-cyg2-test.sh exercises every operation
+against a fake mirror and a fake root (93 tests).
+
+New operations
+- localinstall FILE...: install local package archives. The name is taken
+  from NAME-VERSION-RELEASE.tar.*; dependencies come from a .hint file next
+  to the archive (requires/depends/depends2) or from setup.ini, and missing
+  ones are installed from the mirror. Hint dependencies are remembered for
+  remove, autoremove and check.
+- reinstall PKG...: reinstall installed packages and keep their flags; when
+  the installed version is no longer current, reuse its archive from the
+  cache.
+- upgrade [PKG...]: upgrade all or the named packages whose installed file
+  differs from "current" in setup.ini (setup.exe semantics). New
+  dependencies are installed, and files the new version no longer ships
+  are removed.
+- check [--files] [--fix]: verify installed.db format, file manifests,
+  dependencies, packaged files (--files) and pending postinstall scripts.
+  --fix installs missing dependencies and reinstalls broken packages.
+- autoremove: remove auto-installed dependencies that no manually installed,
+  Base, essential or unknown package still needs. Refuses to run when no
+  package is marked manual.
+
+New options
+- -s, --simulate, --dry-run: print the plan, change nothing.
+- -y, --yes: skip the confirmation prompt (asked only on a terminal).
+- --force: remove packages that others depend on; replace the cygwin
+  package while Cygwin is running.
+- --fix, --files: options for check.
+- --name=PKG: package name for localinstall.
+- -h, --help: print usage.
+- --version: now prints "apt-cyg version 2.0" with the copyright lines of
+  Stephen Jungels, Trans-code Design and ZenSage Design.
+
+New behaviour
+- Dependencies are resolved in-process into an ordered plan (dependencies
+  first, cycles handled), shown before anything changes.
+- All packages are downloaded and verified before the first one is
+  unpacked; a failed download leaves the system untouched.
+- installed.db records the setup.exe "picked by the user" flag: 1 for
+  requested packages, 0 for dependencies. Installing an already installed
+  dependency marks it manual.
+- remove refuses to break installed packages that depend on the target.
+- setup.ini is fetched as setup.zst, then setup.xz, then setup.bz2. The
+  compressed copy is kept, so wget -N and a checksum skip unchanged lists.
+- searchall asks for a gzip-compressed transfer (wget --compression=auto,
+  curl --compressed); package downloads are never content-encoded.
+- update messages show the full setup.ini path.
+- A setup.idx index is built once per setup.ini, so lookups no longer scan
+  the whole file.
+- Unpacking and building the file manifest happen in one tar pass.
+- search scans all manifests in a single gawk process.
+- A lock directory serialises changing commands; stale locks are taken
+  over.
+- Actions are logged to /var/log/apt-cyg.log.
+- curl is supported as a downloader besides wget and lynx;
+  file:// and plain-path mirrors are accepted.
+- APT_CYG_ROOT, APT_CYG_ARCH and APT_CYG_DOWNLOADER environment variables
+  allow running against an alternate root (used by the tests).
+- Package names are read from a pipe only when none are given on the
+  command line.
+
+Bug fixes
+- postinstall: only *.sh scripts were run. .dash, .bat and .cmd scripts are
+  now run too, which includes the perpetual autorebase script.
+- postinstall: perpetual scripts (0p_, zp_) were renamed to .done and never
+  ran again. They are now kept and run in setup.exe order: 0p_ first, then
+  one-shot scripts, then zp_.
+- postinstall: one-shot scripts were marked done even when they failed.
+- Dependencies were read only from "requires:"; the "depends2:" field
+  (with version constraints) used by newer setup.ini is now supported.
+- category used the first argument for every query and matched substrings;
+  each name is now matched as a whole, case-insensitive word.
+- installed.db: entries whose names sort before "INSTALLED.DB" (digits,
+  upper case) were inserted above the header line.
+- installed.db was rewritten in place without atomicity; it is now written
+  to a temp file and renamed, with a backup kept.
+- remove deleted directories parent-first, so nested empty directories
+  were left behind; they are now removed deepest-first.
+- remove broke on file names with spaces (unquoted mapfile expansion).
+- check-packages' return value was ignored everywhere.
+- download used exit inside a function, aborting a whole batch on the
+  first unknown package.
+- download wrote a file manifest under /etc/setup for packages that were
+  not installed; listfiles of such packages now reads the cached archive.
+- update ignored errors: a failed or corrupt download could leave no
+  setup.ini while printing "Updated setup.ini". The old copy is now kept.
+- The lynx fallback dropped wget's -O, so searchall could not find its
+  result file.
+- searchall and install shared fixed temp files (/tmp/matches, /tmp/dwn,
+  /tmp/awk.$$, ./desc); a private temp directory is used now.
+- Nested apt-cyg processes for dependencies are replaced by in-process
+  planning.
+- The bash version check exited with status 0; it now exits 1 and compares
+  major and minor numbers properly.
+- printf used the usage and version text as a format string.
+- Unquoted paths broke with spaces in the cache directory or file names.
+- search matched substrings (ls matched lsattr); it now matches the exact
+  path or base name, with an optional .exe suffix and /bin, /lib mapped to
+  /usr/bin, /usr/lib.
+- The Windows cache path from setup.rc is converted with cygpath.
+- mirror and cache now add the key when setup.rc lacks it and replace
+  every old value line; values are passed through ENVIRON so backslashes
+  in Windows paths survive.
+- Version strings in the header and --version were inconsistent.
