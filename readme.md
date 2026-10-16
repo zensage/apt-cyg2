@@ -193,7 +193,7 @@ when cygwin.com is reachable (set `APT_CYG_TEST_OFFLINE=1` to skip it).
 
 <a id="apt-cyg"></a>
 
-### apt-cyg
+### apt-cyg last update at:Commits on Jan 23, 2016.
 
 Version 1.0 · [back to top](#top)
 
