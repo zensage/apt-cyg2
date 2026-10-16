@@ -142,7 +142,10 @@ possibly wget/curl and zstd. Cygwin Setup must have been run once, so that
 #### Installation
 
 apt-cyg2 is a single script. Download it into `/usr/bin` and make it
+
+link1: https://raw.githubusercontent.com/zensage/apt-cyg2/refs/heads/master/apt-cyg2
 link2: https://cdn.jsdelivr.net/gh/zensage/apt-cyg2@master/apt-cyg2
+
 executable:
 
     curl https://raw.githubusercontent.com/zensage/apt-cyg2/refs/heads/master/apt-cyg2 -o /usr/bin/apt-cyg2
